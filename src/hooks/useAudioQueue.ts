@@ -8,7 +8,7 @@ const ERROR_MESSAGES: Record<number, string> = {
   4: 'This audio source is not supported or could not be reached (check the file URL / bucket permissions).',
 }
 
-const CROSSFADE_SECONDS = 5
+const CROSSFADE_SECONDS = 8
 const FADE_STEP_MS = 100
 
 /**

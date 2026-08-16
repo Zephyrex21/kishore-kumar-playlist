@@ -7,6 +7,30 @@ import SeekBar from './SeekBar'
 const ACCENT = '#E8A25A'
 const INK = '#fdf6ec'
 
+function EqualizerBars({ active }: { active: boolean }) {
+  const bars = [
+    { anim: 'eqA', duration: '0.8s' },
+    { anim: 'eqB', duration: '1.1s' },
+    { anim: 'eqC', duration: '0.9s' },
+    { anim: 'eqD', duration: '1.3s' },
+  ]
+  return (
+    <div className="flex items-end gap-[2.5px] h-3 flex-shrink-0" aria-hidden="true">
+      {bars.map((bar, i) => (
+        <span
+          key={i}
+          className="w-[3px] rounded-full"
+          style={{
+            background: ACCENT,
+            height: active ? undefined : '3px',
+            animation: active ? `${bar.anim} ${bar.duration} ease-in-out infinite` : 'none',
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
 function formatTime(seconds: number) {
   if (!Number.isFinite(seconds)) return '0:00'
   const m = Math.floor(seconds / 60)
@@ -76,7 +100,7 @@ export default function PlayerBar({ tracks }: { tracks: Track[] }) {
                 <span className="text-[10px] tabular-nums opacity-50 w-4">{i + 1}</span>
                 {t.name}
               </span>
-              {i === index && !isPaused && <PlayIcon size={12} color={ACCENT} />}
+              {i === index && <EqualizerBars active={!isPaused} />}
             </button>
           ))}
         </div>
@@ -104,6 +128,18 @@ export default function PlayerBar({ tracks }: { tracks: Track[] }) {
             animation: isPaused ? 'none' : 'spin 6s linear infinite',
           }}
         >
+          {!isPaused && (
+            <>
+              <span
+                className="absolute inset-0 rounded-full pointer-events-none"
+                style={{ border: `1px solid ${ACCENT}66`, animation: 'pulse-ring 2.2s ease-out infinite' }}
+              />
+              <span
+                className="absolute inset-0 rounded-full pointer-events-none"
+                style={{ border: `1px solid ${ACCENT}44`, animation: 'pulse-ring 2.2s ease-out infinite 1.1s' }}
+              />
+            </>
+          )}
           <MusicNoteIcon size={20} color={`${ACCENT}cc`} />
           <div className="absolute w-2 h-2 rounded-full" style={{ background: '#12080399' }} />
         </div>
@@ -116,6 +152,7 @@ export default function PlayerBar({ tracks }: { tracks: Track[] }) {
             <p className="text-[10px] tabular-nums" style={{ color: `${INK}55` }}>
               {index + 1} / {tracks.length}
             </p>
+            <EqualizerBars active={!isPaused} />
           </div>
           <p className="text-[15px] font-medium truncate mb-2" style={{ color: INK }}>
             {current?.name ?? 'No track'}
@@ -177,8 +214,16 @@ export default function PlayerBar({ tracks }: { tracks: Track[] }) {
 
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes pulse-ring {
+          0% { transform: scale(1); opacity: 0.7; }
+          100% { transform: scale(1.7); opacity: 0; }
+        }
+        @keyframes eqA { 0%, 100% { height: 30%; } 50% { height: 100%; } }
+        @keyframes eqB { 0%, 100% { height: 60%; } 50% { height: 20%; } }
+        @keyframes eqC { 0%, 100% { height: 40%; } 50% { height: 90%; } }
+        @keyframes eqD { 0%, 100% { height: 80%; } 50% { height: 35%; } }
         @media (prefers-reduced-motion: reduce) {
-          div[style*="animation"] { animation: none !important; }
+          div[style*="animation"], span[style*="animation"] { animation: none !important; }
         }
       `}</style>
     </div>

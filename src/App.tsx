@@ -1,5 +1,8 @@
 import { useSupabaseQueue } from './hooks/useSupabaseQueue'
 import PlayerBar from './components/PlayerBar'
+import { GithubIcon } from './components/icons'
+
+const GITHUB_URL = 'https://github.com/Zephyrex21/kishore-kumar-playlist'
 
 export default function App() {
   const { tracks, isLoading, error } = useSupabaseQueue()
@@ -27,7 +30,7 @@ export default function App() {
 
       <div className="absolute top-10 right-6 md:top-16 md:right-16 text-right z-10">
         <h1
-          className="leading-[0.95] text-[15vw] md:text-[6.5rem] font-bold"
+          className="leading-[0.95] text-[15vw] md:text-[6.5rem]"
           style={{ fontFamily: 'var(--font-devanagari)', color: '#fdf6ec' }}
         >
           किशोर कुमार
@@ -54,6 +57,17 @@ export default function App() {
           No songs found yet — upload some audio files to your Supabase "songs" bucket.
         </div>
       )}
+
+      <a
+        href={GITHUB_URL}
+        target="_blank"
+        rel="noreferrer"
+        aria-label="View source on GitHub"
+        className="fixed bottom-28 right-6 z-30 w-11 h-11 flex items-center justify-center rounded-full backdrop-blur-xl border transition-transform hover:scale-110"
+        style={{ background: 'rgba(18,8,3,0.7)', borderColor: 'rgba(255,255,255,0.15)', color: '#fdf6ecdd' }}
+      >
+        <GithubIcon size={20} />
+      </a>
 
       <PlayerBar tracks={tracks} />
     </main>
