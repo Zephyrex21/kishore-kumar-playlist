@@ -15,7 +15,7 @@ export default function App() {
           on narrower/taller windows the crop eats into empty background
           first, not his face. */}
       <img
-        src="/images/hero.jpg"
+        src="/images/hero2.png"
         alt="Kishore Kumar"
         className="absolute inset-0 w-full h-full object-cover"
         style={{ objectPosition: '32% center' }}
