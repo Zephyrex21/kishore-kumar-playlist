@@ -5,14 +5,17 @@ export default function App() {
   const { tracks, isLoading, error } = useSupabaseQueue()
 
   return (
-    <main className="relative min-h-screen w-full overflow-hidden" style={{ background: '#C91600' }}>
-      {/* Pre-styled image, used as-is — no filters or effects. object-contain
-          shows the whole image without cropping/zooming; the page background
-          above matches the image's own edge color so any letterbox blends in. */}
+    <main className="relative min-h-screen w-full overflow-hidden">
+      {/* Pre-styled image, used as-is — no filters or effects. object-cover
+          fills the viewport with no empty bands; object-position is anchored
+          toward the subject (roughly where his face sits in the source) so
+          on narrower/taller windows the crop eats into empty background
+          first, not his face. */}
       <img
         src="/images/hero.jpg"
         alt="Kishore Kumar"
-        className="absolute inset-0 w-full h-full object-contain object-center"
+        className="absolute inset-0 w-full h-full object-cover"
+        style={{ objectPosition: '32% center' }}
       />
 
       {/* Darkens the lower band so the floating player bar stays legible
