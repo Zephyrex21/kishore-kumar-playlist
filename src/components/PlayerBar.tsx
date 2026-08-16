@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAudioQueue } from '../hooks/useAudioQueue'
 import type { Track } from '../hooks/useSupabaseQueue'
-import { PlayIcon, PauseIcon, PrevIcon, NextIcon, QueueIcon, MusicNoteIcon } from './icons'
+import { PlayIcon, PauseIcon, PrevIcon, NextIcon, QueueIcon, MusicNoteIcon, VolumeHighIcon, VolumeMuteIcon } from './icons'
 import SeekBar from './SeekBar'
 
 const ACCENT = '#E8A25A'
@@ -39,25 +39,53 @@ function formatTime(seconds: number) {
 }
 
 export default function PlayerBar({ tracks }: { tracks: Track[] }) {
-  const { current, index, isPaused, position, duration, error, togglePlay, next, prev, playAt, seek } =
-    useAudioQueue(tracks)
+  const {
+    current,
+    index,
+    isPaused,
+    position,
+    duration,
+    error,
+    volume,
+    togglePlay,
+    next,
+    prev,
+    playAt,
+    seek,
+    setVolume,
+    toggleMute,
+  } = useAudioQueue(tracks)
   const [showQueue, setShowQueue] = useState(false)
+  const [showVolume, setShowVolume] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
   const toggleRef = useRef<HTMLButtonElement>(null)
+  const volumePanelRef = useRef<HTMLDivElement>(null)
+  const volumeToggleRef = useRef<HTMLButtonElement>(null)
 
   // Click outside the queue panel (and not on the toggle button itself,
-  // which has its own open/close handler) closes it. Escape does too.
+  // which has its own open/close handler) closes it. Same for the volume
+  // popover. Escape closes whichever is open.
   useEffect(() => {
-    if (!showQueue) return
+    if (!showQueue && !showVolume) return
 
     function handlePointerDown(e: MouseEvent) {
       const target = e.target as Node
-      if (panelRef.current?.contains(target)) return
-      if (toggleRef.current?.contains(target)) return
-      setShowQueue(false)
+      if (showQueue && !panelRef.current?.contains(target) && !toggleRef.current?.contains(target)) {
+        setShowQueue(false)
+      }
+      if (
+        showVolume &&
+        !volumePanelRef.current?.contains(target) &&
+        !volumeToggleRef.current?.contains(target)
+      ) {
+        setShowVolume(false)
+      }
     }
     function handleKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setShowQueue(false)
+      if (e.key === 'Escape') {
+        setShowQueue(false)
+        setShowVolume(false)
+      }
     }
 
     document.addEventListener('mousedown', handlePointerDown)
@@ -66,7 +94,44 @@ export default function PlayerBar({ tracks }: { tracks: Track[] }) {
       document.removeEventListener('mousedown', handlePointerDown)
       document.removeEventListener('keydown', handleKey)
     }
-  }, [showQueue])
+  }, [showQueue, showVolume])
+
+  // Keyboard shortcuts — ignored while typing in an input/textarea so they
+  // don't hijack normal text entry elsewhere on the page.
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement)?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return
+
+      switch (e.code) {
+        case 'Space':
+          e.preventDefault()
+          togglePlay()
+          break
+        case 'ArrowRight':
+          e.preventDefault()
+          seek(Math.min(duration, position + 5))
+          break
+        case 'ArrowLeft':
+          e.preventDefault()
+          seek(Math.max(0, position - 5))
+          break
+        case 'ArrowUp':
+          e.preventDefault()
+          setVolume(volume + 0.1)
+          break
+        case 'ArrowDown':
+          e.preventDefault()
+          setVolume(volume - 0.1)
+          break
+        case 'KeyM':
+          toggleMute()
+          break
+      }
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [togglePlay, seek, position, duration, volume, setVolume, toggleMute])
 
   if (tracks.length === 0) return null
 
@@ -199,6 +264,41 @@ export default function PlayerBar({ tracks }: { tracks: Track[] }) {
             style={{ color: `${INK}cc` }}
           >
             <NextIcon />
+          </button>
+          <button
+            ref={volumeToggleRef}
+            onClick={() => setShowVolume((s) => !s)}
+            aria-label={volume === 0 ? 'Unmute' : 'Volume'}
+            className="w-9 h-9 flex items-center justify-center rounded-full transition-colors hover:bg-white/10 relative"
+            style={{ color: showVolume ? ACCENT : `${INK}cc`, background: showVolume ? 'rgba(255,255,255,0.08)' : 'transparent' }}
+          >
+            {volume === 0 ? <VolumeMuteIcon /> : <VolumeHighIcon />}
+            {showVolume && (
+              <div
+                ref={volumePanelRef}
+                onClick={(e) => e.stopPropagation()}
+                className="absolute bottom-11 left-1/2 -translate-x-1/2 rounded-full backdrop-blur-2xl border px-3 py-3 shadow-2xl"
+                style={{ background: 'rgba(18,8,3,0.92)', borderColor: 'rgba(255,255,255,0.1)' }}
+              >
+                <div className="h-24 w-6 flex items-center justify-center">
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={volume * 100}
+                    onChange={(e) => setVolume(Number(e.target.value) / 100)}
+                    aria-label="Volume"
+                    style={{
+                      writingMode: 'vertical-lr' as const,
+                      direction: 'rtl',
+                      width: 4,
+                      height: 88,
+                      accentColor: ACCENT,
+                    }}
+                  />
+                </div>
+              </div>
+            )}
           </button>
           <button
             ref={toggleRef}

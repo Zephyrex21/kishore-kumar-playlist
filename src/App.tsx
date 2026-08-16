@@ -15,10 +15,10 @@ export default function App() {
           on narrower/taller windows the crop eats into empty background
           first, not his face. */}
       <img
-        src="/images/hero2.png"
+        src="/images/hero.jpg"
         alt="Kishore Kumar"
         className="absolute inset-0 w-full h-full object-cover"
-        style={{ objectPosition: '32% center' }}
+        style={{ objectPosition: '32% 22%' }}
       />
 
       {/* Darkens the lower band so the floating player bar stays legible
@@ -63,8 +63,8 @@ export default function App() {
         target="_blank"
         rel="noreferrer"
         aria-label="View source on GitHub"
-        className="fixed bottom-28 right-6 z-30 w-11 h-11 flex items-center justify-center rounded-full backdrop-blur-xl border transition-transform hover:scale-110"
-        style={{ background: 'rgba(18,8,3,0.7)', borderColor: 'rgba(255,255,255,0.15)', color: '#fdf6ecdd' }}
+        className="fixed bottom-6 right-6 z-50 w-11 h-11 flex items-center justify-center rounded-full backdrop-blur-xl border transition-transform hover:scale-110"
+        style={{ background: 'rgba(18,8,3,0.75)', borderColor: 'rgba(255,255,255,0.15)', color: '#fdf6ecdd' }}
       >
         <GithubIcon size={20} />
       </a>

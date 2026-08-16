@@ -10,6 +10,17 @@ const ERROR_MESSAGES: Record<number, string> = {
 
 const CROSSFADE_SECONDS = 8
 const FADE_STEP_MS = 100
+const VOLUME_STORAGE_KEY = 'kishore-tribute:volume'
+
+function loadStoredVolume(): number {
+  try {
+    const raw = localStorage.getItem(VOLUME_STORAGE_KEY)
+    const parsed = raw !== null ? Number(raw) : 1
+    return Number.isFinite(parsed) ? Math.min(1, Math.max(0, parsed)) : 1
+  } catch {
+    return 1
+  }
+}
 
 /**
  * Two audio elements, alternating as "active". When the active track has
@@ -18,6 +29,9 @@ const FADE_STEP_MS = 100
  * The "active" pointer and the displayed index flip the moment the fade
  * starts — the outgoing element keeps playing quietly in the background
  * until it fades to silence, decoupled from anything the UI shows.
+ *
+ * Also drives the Media Session API (lock-screen / hardware-key controls)
+ * and persists volume across visits.
  */
 export function useAudioQueue(tracks: Track[]) {
   const audiosRef = useRef<[HTMLAudioElement, HTMLAudioElement]>([new Audio(), new Audio()])
@@ -27,12 +41,15 @@ export function useAudioQueue(tracks: Track[]) {
   const crossfading = useRef(false)
   const fadeTimer = useRef<number | null>(null)
   const skipNextLoad = useRef(false)
+  const masterVolume = useRef(loadStoredVolume())
+  const lastNonZeroVolume = useRef(masterVolume.current || 1)
 
   const [index, setIndexState] = useState(0)
   const [isPaused, setIsPaused] = useState(true)
   const [position, setPosition] = useState(0)
   const [duration, setDuration] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  const [volume, setVolumeState] = useState(masterVolume.current)
 
   const setIndex = (updater: number | ((i: number) => number)) => {
     setIndexState((prev) => {
@@ -64,8 +81,8 @@ export function useAudioQueue(tracks: Track[]) {
     const inactive = inactiveEl()
     inactive.pause()
     inactive.currentTime = 0
-    inactive.volume = 1
-    activeEl().volume = 1
+    inactive.volume = masterVolume.current
+    activeEl().volume = masterVolume.current
   }
 
   function startCrossfade(outgoing: HTMLAudioElement, remainingSeconds: number) {
@@ -90,21 +107,21 @@ export function useAudioQueue(tracks: Track[]) {
     setPosition(0)
     setDuration(incoming.duration || 0)
 
-    outgoing.volume = 1
+    outgoing.volume = masterVolume.current
     const fadeMs = Math.max(300, remainingSeconds * 1000)
     const steps = Math.ceil(fadeMs / FADE_STEP_MS)
     let step = 0
     fadeTimer.current = window.setInterval(() => {
       step++
       const t = Math.min(1, step / steps)
-      outgoing.volume = Math.max(0, 1 - t)
-      incoming.volume = Math.min(1, t)
+      outgoing.volume = Math.max(0, (1 - t) * masterVolume.current)
+      incoming.volume = Math.min(masterVolume.current, t * masterVolume.current)
       if (t >= 1) {
         if (fadeTimer.current) window.clearInterval(fadeTimer.current)
         fadeTimer.current = null
         outgoing.pause()
         outgoing.currentTime = 0
-        outgoing.volume = 1
+        outgoing.volume = masterVolume.current
         crossfading.current = false
       }
     }, FADE_STEP_MS)
@@ -118,6 +135,8 @@ export function useAudioQueue(tracks: Track[]) {
     const [a, b] = audiosRef.current
     a.preload = 'auto'
     b.preload = 'auto'
+    a.volume = masterVolume.current
+    b.volume = masterVolume.current
 
     function bind(el: HTMLAudioElement) {
       const isActive = () => audiosRef.current[activeSlot.current] === el
@@ -125,6 +144,17 @@ export function useAudioQueue(tracks: Track[]) {
       const onTime = () => {
         if (!isActive()) return
         setPosition(el.currentTime)
+        if ('mediaSession' in navigator && el.duration && Number.isFinite(el.duration)) {
+          try {
+            navigator.mediaSession.setPositionState({
+              duration: el.duration,
+              position: Math.min(el.currentTime, el.duration),
+              playbackRate: 1,
+            })
+          } catch {
+            // Some browsers throw if called too rapidly during a seek — safe to ignore.
+          }
+        }
         if (
           !crossfading.current &&
           el.duration &&
@@ -200,7 +230,7 @@ export function useAudioQueue(tracks: Track[]) {
     const wasPlaying = !el.paused
     el.src = current.url
     el.currentTime = 0
-    el.volume = 1
+    el.volume = masterVolume.current
     el.load()
     setPosition(0)
     setDuration(0)
@@ -238,5 +268,84 @@ export function useAudioQueue(tracks: Track[]) {
     setPosition(seconds)
   }
 
-  return { current, index, isPaused, position, duration, error, togglePlay, next, prev, playAt, seek }
+  const setVolume = (v: number) => {
+    const clamped = Math.min(1, Math.max(0, v))
+    masterVolume.current = clamped
+    if (clamped > 0) lastNonZeroVolume.current = clamped
+    setVolumeState(clamped)
+    // Only touch the currently-audible element directly — during a crossfade
+    // the fade interval owns both elements' volumes every 100ms anyway, so a
+    // one-off correction here would just get overwritten on the next tick.
+    if (!crossfading.current) activeEl().volume = clamped
+    try {
+      localStorage.setItem(VOLUME_STORAGE_KEY, String(clamped))
+    } catch {
+      // Private browsing / storage disabled — volume just won't persist, not fatal.
+    }
+  }
+
+  const toggleMute = () => {
+    if (volume > 0) setVolume(0)
+    else setVolume(lastNonZeroVolume.current || 1)
+  }
+
+  // Media Session: real lock-screen / notification metadata + hardware
+  // media-key support. Handlers are registered once — they call the
+  // wrapper functions above, which read from refs internally, so they
+  // stay correct even though this effect only runs on mount.
+  useEffect(() => {
+    if (!('mediaSession' in navigator)) return
+    try {
+      navigator.mediaSession.setActionHandler('play', () => togglePlay())
+      navigator.mediaSession.setActionHandler('pause', () => togglePlay())
+      navigator.mediaSession.setActionHandler('previoustrack', () => prev())
+      navigator.mediaSession.setActionHandler('nexttrack', () => next())
+      navigator.mediaSession.setActionHandler('seekto', (details) => {
+        if (typeof details.seekTime === 'number') seek(details.seekTime)
+      })
+    } catch {
+      // Older browsers may not support every action — safe to ignore.
+    }
+    return () => {
+      if (!('mediaSession' in navigator)) return
+      navigator.mediaSession.setActionHandler('play', null)
+      navigator.mediaSession.setActionHandler('pause', null)
+      navigator.mediaSession.setActionHandler('previoustrack', null)
+      navigator.mediaSession.setActionHandler('nexttrack', null)
+      navigator.mediaSession.setActionHandler('seekto', null)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    if (!('mediaSession' in navigator) || !current) return
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: current.name,
+      artist: 'Kishore Kumar',
+      album: 'Kishore Kumar Playlist',
+      artwork: [{ src: '/images/hero.jpg', sizes: '1648x954', type: 'image/jpeg' }],
+    })
+  }, [current?.name])
+
+  useEffect(() => {
+    if (!('mediaSession' in navigator)) return
+    navigator.mediaSession.playbackState = isPaused ? 'paused' : 'playing'
+  }, [isPaused])
+
+  return {
+    current,
+    index,
+    isPaused,
+    position,
+    duration,
+    error,
+    volume,
+    togglePlay,
+    next,
+    prev,
+    playAt,
+    seek,
+    setVolume,
+    toggleMute,
+  }
 }
