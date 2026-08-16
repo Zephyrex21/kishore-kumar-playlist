@@ -17,7 +17,7 @@ export default function App() {
       <img
         src="/images/hero.jpg"
         alt="Kishore Kumar"
-        className="absolute inset-0 w-full h-full object-cover"
+        className="absolute inset-0 w-full h-full object-cover fade-in-image"
         style={{ objectPosition: '32% 22%' }}
       />
 
@@ -28,7 +28,7 @@ export default function App() {
         style={{ background: 'linear-gradient(180deg, transparent, #1c0c04cc)' }}
       />
 
-      <div className="absolute top-10 right-6 md:top-16 md:right-16 text-right z-10">
+      <div className="absolute top-10 right-6 md:top-16 md:right-16 text-right z-10 fade-in-up">
         <h1
           className="leading-[0.95] text-[15vw] md:text-[6.5rem]"
           style={{ fontFamily: 'var(--font-devanagari)', color: '#fdf6ec' }}
@@ -39,6 +39,25 @@ export default function App() {
           Playlist
         </p>
       </div>
+
+      {isLoading && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-[94vw] max-w-2xl animate-pulse">
+          <div
+            className="rounded-[28px] backdrop-blur-2xl border px-5 py-4 flex items-center gap-4"
+            style={{
+              background: 'linear-gradient(180deg, rgba(28,14,6,0.7), rgba(18,8,3,0.7))',
+              borderColor: 'rgba(255,255,255,0.12)',
+            }}
+          >
+            <div className="w-14 h-14 rounded-full flex-shrink-0" style={{ background: 'rgba(255,255,255,0.08)' }} />
+            <div className="flex-1 space-y-2.5">
+              <div className="h-2 w-28 rounded-full" style={{ background: 'rgba(255,255,255,0.1)' }} />
+              <div className="h-3 w-44 rounded-full" style={{ background: 'rgba(255,255,255,0.14)' }} />
+              <div className="h-1 w-full rounded-full mt-1" style={{ background: 'rgba(255,255,255,0.08)' }} />
+            </div>
+          </div>
+        </div>
+      )}
 
       {error && (
         <div

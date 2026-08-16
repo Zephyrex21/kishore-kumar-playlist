@@ -36,6 +36,24 @@ body {
   background: #E8A25A;
 }
 
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.fade-in-up {
+  animation: fade-up 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.fade-in-image {
+  animation: fade-in 1.2s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fade-in-up, .fade-in-image { animation: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
 }

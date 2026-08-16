@@ -43,6 +43,17 @@ export function useAudioQueue(tracks: Track[]) {
   const skipNextLoad = useRef(false)
   const masterVolume = useRef(loadStoredVolume())
   const lastNonZeroVolume = useRef(masterVolume.current || 1)
+  const audioCtxRef = useRef<AudioContext | null>(null)
+  const analysersRef = useRef<[AnalyserNode | null, AnalyserNode | null]>([null, null])
+
+  function resumeAudioCtx() {
+    const ctx = audioCtxRef.current
+    if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {})
+  }
+
+  function getActiveAnalyser() {
+    return analysersRef.current[activeSlot.current]
+  }
 
   const [index, setIndexState] = useState(0)
   const [isPaused, setIsPaused] = useState(true)
@@ -97,6 +108,7 @@ export function useAudioQueue(tracks: Track[]) {
     incoming.src = nextTrack.url
     incoming.currentTime = 0
     incoming.volume = 0
+    resumeAudioCtx()
     incoming.play().catch(() => {})
 
     // Flip active slot + displayed index immediately — the UI now shows the
@@ -137,6 +149,40 @@ export function useAudioQueue(tracks: Track[]) {
     b.preload = 'auto'
     a.volume = masterVolume.current
     b.volume = masterVolume.current
+    // Needed for the Web Audio analyser below to actually receive frequency
+    // data cross-origin (Supabase's public bucket URLs). If this — or
+    // anything below — fails or the bucket lacks permissive CORS, playback
+    // itself is entirely unaffected; only the real-time visualizer degrades
+    // to its CSS fallback (handled in the component, not here).
+    a.crossOrigin = 'anonymous'
+    b.crossOrigin = 'anonymous'
+
+    try {
+      const AudioContextCtor = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+      if (AudioContextCtor) {
+        const ctx = new AudioContextCtor()
+        audioCtxRef.current = ctx
+        const setupAnalyser = (el: HTMLAudioElement): AnalyserNode | null => {
+          try {
+            const source = ctx.createMediaElementSource(el)
+            const analyser = ctx.createAnalyser()
+            analyser.fftSize = 64
+            analyser.smoothingTimeConstant = 0.75
+            // IMPORTANT: createMediaElementSource reroutes the element's audio
+            // through the Web Audio graph — it will go SILENT unless we
+            // reconnect it to a destination ourselves.
+            source.connect(analyser)
+            analyser.connect(ctx.destination)
+            return analyser
+          } catch {
+            return null
+          }
+        }
+        analysersRef.current = [setupAnalyser(a), setupAnalyser(b)]
+      }
+    } catch {
+      // Web Audio unavailable in this browser — visualizer falls back to CSS.
+    }
 
     function bind(el: HTMLAudioElement) {
       const isActive = () => audiosRef.current[activeSlot.current] === el
@@ -212,6 +258,7 @@ export function useAudioQueue(tracks: Track[]) {
       cleanupB()
       a.pause()
       b.pause()
+      audioCtxRef.current?.close().catch(() => {})
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -235,6 +282,7 @@ export function useAudioQueue(tracks: Track[]) {
     setPosition(0)
     setDuration(0)
     if (wasPlaying) {
+      resumeAudioCtx()
       el.play().catch((e) => setError(e instanceof Error ? e.message : 'Could not start playback.'))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -243,6 +291,7 @@ export function useAudioQueue(tracks: Track[]) {
   const togglePlay = () => {
     const el = activeEl()
     if (el.paused) {
+      resumeAudioCtx()
       el.play().catch((e) => setError(e instanceof Error ? e.message : 'Could not start playback.'))
     } else {
       el.pause()
@@ -347,5 +396,6 @@ export function useAudioQueue(tracks: Track[]) {
     seek,
     setVolume,
     toggleMute,
+    getActiveAnalyser,
   }
 }

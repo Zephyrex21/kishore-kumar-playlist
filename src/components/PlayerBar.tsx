@@ -7,18 +7,97 @@ import SeekBar from './SeekBar'
 const ACCENT = '#E8A25A'
 const INK = '#fdf6ec'
 
-function EqualizerBars({ active }: { active: boolean }) {
-  const bars = [
+function EqualizerBars({
+  active,
+  getAnalyser,
+}: {
+  active: boolean
+  getAnalyser?: () => AnalyserNode | null
+}) {
+  const barRefs = useRef<(HTMLSpanElement | null)[]>([])
+
+  const fallback = [
     { anim: 'eqA', duration: '0.8s' },
     { anim: 'eqB', duration: '1.1s' },
     { anim: 'eqC', duration: '0.9s' },
     { anim: 'eqD', duration: '1.3s' },
   ]
+
+  // Drive real bar heights from actual frequency data when a Web Audio
+  // analyser is available and returning non-silent data. We probe for up
+  // to ~1.5s first — if the analyser is CORS-blocked (Supabase bucket
+  // lacking permissive CORS, etc.) it returns all-zero data forever, and
+  // we must NOT touch bar heights in that case, or we'd freeze them at the
+  // floor value instead of leaving the CSS keyframe animation running.
+  useEffect(() => {
+    if (!active || !getAnalyser) return
+    const analyser = getAnalyser()
+    if (!analyser) return
+
+    const data = new Uint8Array(analyser.frequencyBinCount)
+    const barCount = barRefs.current.length
+    const groupSize = Math.max(1, Math.floor(data.length / barCount))
+    const MAX_PROBE_FRAMES = 90 // ~1.5s at 60fps — covers a quiet track intro
+    let probeFrames = 0
+    let confirmed = false
+    let raf: number
+
+    function paint() {
+      for (let i = 0; i < barCount; i++) {
+        let sum = 0
+        for (let j = 0; j < groupSize; j++) sum += data[i * groupSize + j] || 0
+        const avg = sum / groupSize / 255
+        const el = barRefs.current[i]
+        if (el) el.style.height = `${Math.max(12, avg * 100)}%`
+      }
+    }
+
+    function tick() {
+      const a = getAnalyser?.()
+      if (!a) {
+        raf = requestAnimationFrame(tick)
+        return
+      }
+      a.getByteFrequencyData(data)
+
+      if (!confirmed) {
+        const anyNonZero = data.some((v) => v > 2)
+        if (anyNonZero) {
+          confirmed = true
+          barRefs.current.forEach((el) => {
+            if (el) el.style.animation = 'none'
+          })
+          paint()
+        } else if (++probeFrames > MAX_PROBE_FRAMES) {
+          // Gave it a fair chance — genuinely no data coming through.
+          // Stop the loop entirely and leave the CSS animation untouched.
+          return
+        }
+      } else {
+        paint()
+      }
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => {
+      cancelAnimationFrame(raf)
+      barRefs.current.forEach((el) => {
+        if (el) {
+          el.style.animation = ''
+          el.style.height = ''
+        }
+      })
+    }
+  }, [active, getAnalyser])
+
   return (
     <div className="flex items-end gap-[2.5px] h-3 flex-shrink-0" aria-hidden="true">
-      {bars.map((bar, i) => (
+      {fallback.map((bar, i) => (
         <span
           key={i}
+          ref={(el) => {
+            barRefs.current[i] = el
+          }}
           className="w-[3px] rounded-full"
           style={{
             background: ACCENT,
@@ -54,6 +133,7 @@ export default function PlayerBar({ tracks }: { tracks: Track[] }) {
     seek,
     setVolume,
     toggleMute,
+    getActiveAnalyser,
   } = useAudioQueue(tracks)
   const [showQueue, setShowQueue] = useState(false)
   const [showVolume, setShowVolume] = useState(false)
@@ -217,7 +297,7 @@ export default function PlayerBar({ tracks }: { tracks: Track[] }) {
             <p className="text-[10px] tabular-nums" style={{ color: `${INK}55` }}>
               {index + 1} / {tracks.length}
             </p>
-            <EqualizerBars active={!isPaused} />
+            <EqualizerBars active={!isPaused} getAnalyser={getActiveAnalyser} />
           </div>
           <p className="text-[15px] font-medium truncate mb-2" style={{ color: INK }}>
             {current?.name ?? 'No track'}
