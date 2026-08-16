@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAudioQueue } from '../hooks/useAudioQueue'
 import type { Track } from '../hooks/useSupabaseQueue'
 import { PlayIcon, PauseIcon, PrevIcon, NextIcon, QueueIcon, MusicNoteIcon } from './icons'
@@ -18,6 +18,31 @@ export default function PlayerBar({ tracks }: { tracks: Track[] }) {
   const { current, index, isPaused, position, duration, error, togglePlay, next, prev, playAt, seek } =
     useAudioQueue(tracks)
   const [showQueue, setShowQueue] = useState(false)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const toggleRef = useRef<HTMLButtonElement>(null)
+
+  // Click outside the queue panel (and not on the toggle button itself,
+  // which has its own open/close handler) closes it. Escape does too.
+  useEffect(() => {
+    if (!showQueue) return
+
+    function handlePointerDown(e: MouseEvent) {
+      const target = e.target as Node
+      if (panelRef.current?.contains(target)) return
+      if (toggleRef.current?.contains(target)) return
+      setShowQueue(false)
+    }
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setShowQueue(false)
+    }
+
+    document.addEventListener('mousedown', handlePointerDown)
+    document.addEventListener('keydown', handleKey)
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+      document.removeEventListener('keydown', handleKey)
+    }
+  }, [showQueue])
 
   if (tracks.length === 0) return null
 
@@ -36,7 +61,8 @@ export default function PlayerBar({ tracks }: { tracks: Track[] }) {
 
       {showQueue && (
         <div
-          className="mb-2 rounded-2xl backdrop-blur-2xl border max-h-56 overflow-y-auto shadow-2xl"
+          ref={panelRef}
+          className="queue-scroll mb-2 rounded-2xl backdrop-blur-2xl border max-h-56 overflow-y-auto shadow-2xl"
           style={{ background: 'rgba(18,8,3,0.92)', borderColor: 'rgba(255,255,255,0.1)' }}
         >
           {tracks.map((t, i) => (
@@ -138,6 +164,7 @@ export default function PlayerBar({ tracks }: { tracks: Track[] }) {
             <NextIcon />
           </button>
           <button
+            ref={toggleRef}
             onClick={() => setShowQueue((s) => !s)}
             aria-label="Toggle queue"
             className="w-9 h-9 flex items-center justify-center rounded-full transition-colors hover:bg-white/10 ml-0.5"

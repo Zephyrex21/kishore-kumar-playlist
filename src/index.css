@@ -16,6 +16,26 @@ body {
   font-family: var(--font-sans);
 }
 
+/* Themed scrollbar for the queue panel — matches the dark glass + amber
+   accent instead of the browser's default light/grey scrollbar. */
+.queue-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #E8A25A88 transparent;
+}
+.queue-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.queue-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.queue-scroll::-webkit-scrollbar-thumb {
+  background: #E8A25A88;
+  border-radius: 999px;
+}
+.queue-scroll::-webkit-scrollbar-thumb:hover {
+  background: #E8A25A;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
 }
