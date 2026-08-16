@@ -5,12 +5,14 @@ export default function App() {
   const { tracks, isLoading, error } = useSupabaseQueue()
 
   return (
-    <main className="relative min-h-screen w-full overflow-hidden">
-      {/* Pre-styled image, used as-is — no filters or effects applied here. */}
+    <main className="relative min-h-screen w-full overflow-hidden" style={{ background: '#C91600' }}>
+      {/* Pre-styled image, used as-is — no filters or effects. object-contain
+          shows the whole image without cropping/zooming; the page background
+          above matches the image's own edge color so any letterbox blends in. */}
       <img
         src="/images/hero.jpg"
         alt="Kishore Kumar"
-        className="absolute inset-0 w-full h-full object-cover object-center"
+        className="absolute inset-0 w-full h-full object-contain object-center"
       />
 
       {/* Darkens the lower band so the floating player bar stays legible
