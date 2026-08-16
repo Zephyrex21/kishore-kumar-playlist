@@ -1,0 +1,21 @@
+@import "tailwindcss";
+
+@theme {
+  --font-devanagari: "Noto Serif Devanagari", serif;
+  --font-voice: "Cormorant", serif;
+  --font-sans: "Inter", sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: #C4491A;
+  font-family: var(--font-sans);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
