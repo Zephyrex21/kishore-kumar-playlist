@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { songMeta } from '../data/songMeta'
+import { lookupSongMeta } from '../data/songMeta'
 
 const ACCENT = '#E8A25A'
 const INK = '#fdf6ec'
@@ -16,7 +16,7 @@ type Props = {
  */
 export default function SongInfoModal({ trackName, onClose }: Props) {
   const cardRef = useRef<HTMLDivElement>(null)
-  const meta = songMeta[trackName]
+  const meta = lookupSongMeta(trackName)
 
   useEffect(() => {
     function handlePointerDown(e: MouseEvent) {
