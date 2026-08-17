@@ -9,6 +9,11 @@ type Props = {
   onClose: () => void
 }
 
+/**
+ * Anchored popover, not a full-screen modal — sits just above the player
+ * bar's disc icon (the outer PlayerBar wrapper is `fixed`, which is what
+ * makes this `absolute` positioning work relative to it).
+ */
 export default function SongInfoModal({ trackName, onClose }: Props) {
   const cardRef = useRef<HTMLDivElement>(null)
   const meta = songMeta[trackName]
@@ -30,46 +35,51 @@ export default function SongInfoModal({ trackName, onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center px-6"
-      style={{ background: 'rgba(10,5,2,0.55)' }}
+      ref={cardRef}
+      className="absolute bottom-full left-5 mb-3 w-[calc(100vw-2.5rem)] max-w-[300px] rounded-2xl backdrop-blur-2xl border p-5 shadow-2xl fade-in-up z-50"
+      style={{ background: 'rgba(22,12,5,0.96)', borderColor: 'rgba(255,255,255,0.14)' }}
     >
+      {/* Small pointer connecting the card back down to the disc icon */}
       <div
-        ref={cardRef}
-        className="w-full max-w-xs rounded-2xl backdrop-blur-2xl border p-6 shadow-2xl fade-in-up"
-        style={{ background: 'rgba(22,12,5,0.95)', borderColor: 'rgba(255,255,255,0.14)' }}
-      >
-        <p className="text-[10px] font-medium tracking-wider uppercase mb-2" style={{ color: `${ACCENT}bb` }}>
-          Now Playing
-        </p>
-        <h3 className="text-lg font-medium mb-4" style={{ color: INK, fontFamily: 'var(--font-voice)' }}>
-          {trackName}
-        </h3>
+        className="absolute -bottom-[7px] left-8 w-3.5 h-3.5 rotate-45 border-r border-b"
+        style={{ background: 'rgba(22,12,5,0.96)', borderColor: 'rgba(255,255,255,0.14)' }}
+      />
 
-        {meta ? (
-          <dl className="space-y-2.5">
-            <div className="flex justify-between text-sm">
+      <p className="text-[10px] font-medium tracking-wider uppercase mb-2" style={{ color: `${ACCENT}bb` }}>
+        Now Playing
+      </p>
+      <h3 className="text-lg leading-snug mb-4" style={{ color: INK, fontFamily: 'var(--font-voice)' }}>
+        {trackName}
+      </h3>
+
+      {meta ? (
+        <>
+          <dl className="space-y-2.5 mb-4">
+            <div className="flex justify-between text-sm gap-4">
               <dt style={{ color: `${INK}88` }}>Film</dt>
-              <dd style={{ color: INK }}>{meta.film}</dd>
+              <dd className="text-right" style={{ color: INK }}>{meta.film}</dd>
             </div>
-            <div className="flex justify-between text-sm">
+            <div className="flex justify-between text-sm gap-4">
               <dt style={{ color: `${INK}88` }}>Year</dt>
               <dd style={{ color: INK }}>{meta.year}</dd>
             </div>
+            <div className="flex justify-between text-sm gap-4">
+              <dt style={{ color: `${INK}88` }}>Composer</dt>
+              <dd className="text-right" style={{ color: INK }}>{meta.composer}</dd>
+            </div>
           </dl>
-        ) : (
-          <p className="text-sm" style={{ color: `${INK}77` }}>
-            Details for this song haven't been added yet.
+          <p
+            className="text-sm italic leading-relaxed pt-3 border-t"
+            style={{ color: `${INK}cc`, fontFamily: 'var(--font-voice)', borderColor: 'rgba(255,255,255,0.1)' }}
+          >
+            {meta.poeticLine}
           </p>
-        )}
-
-        <button
-          onClick={onClose}
-          className="mt-5 w-full text-center text-xs py-2 rounded-full transition-colors hover:bg-white/10"
-          style={{ color: `${INK}aa`, border: '1px solid rgba(255,255,255,0.12)' }}
-        >
-          Close
-        </button>
-      </div>
+        </>
+      ) : (
+        <p className="text-sm" style={{ color: `${INK}77` }}>
+          Details for this song haven't been added yet.
+        </p>
+      )}
     </div>
   )
 }
