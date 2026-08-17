@@ -28,6 +28,19 @@ export default function App() {
         style={{ background: 'linear-gradient(180deg, transparent, #1c0c04cc)' }}
       />
 
+      {/* Subtle film-grain texture — cinematic depth, kept faint enough to
+          read as texture rather than noise. Self-generated SVG turbulence,
+          not a stock asset. */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage:
+            'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'160\' height=\'160\'%3E%3Cfilter id=\'n\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.9\' numOctaves=\'2\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23n)\'/%3E%3C/svg%3E")',
+          mixBlendMode: 'overlay',
+          opacity: 0.05,
+        }}
+      />
+
       <div className="absolute top-10 right-6 md:top-16 md:right-16 text-right z-10 fade-in-up">
         <h1
           className="leading-[0.95] text-[15vw] md:text-[6.5rem]"

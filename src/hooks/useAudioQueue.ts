@@ -11,6 +11,11 @@ const ERROR_MESSAGES: Record<number, string> = {
 const CROSSFADE_SECONDS = 8
 const FADE_STEP_MS = 100
 const VOLUME_STORAGE_KEY = 'kishore-tribute:volume'
+const RECENT_STORAGE_KEY = 'kishore-tribute:recent'
+const RECENT_LIMIT = 20
+
+export type RepeatMode = 'off' | 'all' | 'one'
+export type RecentEntry = { name: string; playedAt: number }
 
 function loadStoredVolume(): number {
   try {
@@ -19,6 +24,26 @@ function loadStoredVolume(): number {
     return Number.isFinite(parsed) ? Math.min(1, Math.max(0, parsed)) : 1
   } catch {
     return 1
+  }
+}
+
+function loadRecent(): RecentEntry[] {
+  try {
+    const raw = localStorage.getItem(RECENT_STORAGE_KEY)
+    const parsed = raw ? JSON.parse(raw) : []
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+function pushRecent(name: string) {
+  try {
+    const list = loadRecent().filter((e) => e.name !== name)
+    list.unshift({ name, playedAt: Date.now() })
+    localStorage.setItem(RECENT_STORAGE_KEY, JSON.stringify(list.slice(0, RECENT_LIMIT)))
+  } catch {
+    // Private browsing / storage disabled — recently-played just won't persist.
   }
 }
 
@@ -45,6 +70,9 @@ export function useAudioQueue(tracks: Track[]) {
   const lastNonZeroVolume = useRef(masterVolume.current || 1)
   const audioCtxRef = useRef<AudioContext | null>(null)
   const analysersRef = useRef<[AnalyserNode | null, AnalyserNode | null]>([null, null])
+  const shuffleRef = useRef(false)
+  const repeatModeRef = useRef<RepeatMode>('off')
+  const lastLoggedTrack = useRef<string | null>(null)
 
   function resumeAudioCtx() {
     const ctx = audioCtxRef.current
@@ -55,12 +83,32 @@ export function useAudioQueue(tracks: Track[]) {
     return analysersRef.current[activeSlot.current]
   }
 
+  // Given the current index, works out what "advance to the next track"
+  // should mean right now — respecting shuffle and repeat. Returns null to
+  // mean "don't advance, just stop" (repeat off + already at the last track).
+  function computeAutoAdvanceIndex(cur: number, len: number): number | null {
+    if (len === 0) return null
+    if (repeatModeRef.current === 'one') return cur
+    if (shuffleRef.current) {
+      if (len === 1) return cur
+      let candidate = cur
+      while (candidate === cur) candidate = Math.floor(Math.random() * len)
+      return candidate
+    }
+    const next = cur + 1
+    if (next >= len) return repeatModeRef.current === 'all' ? 0 : null
+    return next
+  }
+
   const [index, setIndexState] = useState(0)
   const [isPaused, setIsPaused] = useState(true)
   const [position, setPosition] = useState(0)
   const [duration, setDuration] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [volume, setVolumeState] = useState(masterVolume.current)
+  const [shuffle, setShuffleState] = useState(false)
+  const [repeatMode, setRepeatModeState] = useState<RepeatMode>('off')
+  const [recentlyPlayed, setRecentlyPlayed] = useState<RecentEntry[]>(loadRecent)
 
   const setIndex = (updater: number | ((i: number) => number)) => {
     setIndexState((prev) => {
@@ -99,9 +147,10 @@ export function useAudioQueue(tracks: Track[]) {
   function startCrossfade(outgoing: HTMLAudioElement, remainingSeconds: number) {
     const len = tracksRef.current.length
     if (len < 2) return
+    const nextIndex = computeAutoAdvanceIndex(indexRef.current, len)
+    if (nextIndex === null) return
     crossfading.current = true
 
-    const nextIndex = (indexRef.current + 1) % len
     const nextTrack = tracksRef.current[nextIndex]
     const incoming = inactiveEl()
 
@@ -217,7 +266,14 @@ export function useAudioQueue(tracks: Track[]) {
         if (isActive()) setDuration(el.duration || 0)
       }
       const onPlay = () => {
-        if (isActive()) setIsPaused(false)
+        if (!isActive()) return
+        setIsPaused(false)
+        const track = tracksRef.current[indexRef.current]
+        if (track && track.name !== lastLoggedTrack.current) {
+          lastLoggedTrack.current = track.name
+          pushRecent(track.name)
+          setRecentlyPlayed(loadRecent())
+        }
       }
       const onPause = () => {
         if (isActive()) setIsPaused(true)
@@ -231,8 +287,8 @@ export function useAudioQueue(tracks: Track[]) {
       // queues, where the timeupdate-based crossfade never gets a chance to fire.
       const onEnded = () => {
         if (!isActive() || crossfading.current) return
-        const len = tracksRef.current.length
-        if (len > 0) setIndex((i) => (i + 1) % len)
+        const nextIndex = computeAutoAdvanceIndex(indexRef.current, tracksRef.current.length)
+        if (nextIndex !== null) setIndex(nextIndex)
       }
 
       el.addEventListener('timeupdate', onTime)
@@ -300,7 +356,15 @@ export function useAudioQueue(tracks: Track[]) {
 
   const next = () => {
     cancelCrossfade()
-    setIndex((i) => (tracks.length ? (i + 1) % tracks.length : i))
+    setIndex((i) => {
+      if (!tracks.length) return i
+      if (shuffleRef.current && tracks.length > 1) {
+        let candidate = i
+        while (candidate === i) candidate = Math.floor(Math.random() * tracks.length)
+        return candidate
+      }
+      return (i + 1) % tracks.length
+    })
   }
   const prev = () => {
     cancelCrossfade()
@@ -309,6 +373,17 @@ export function useAudioQueue(tracks: Track[]) {
   const playAt = (i: number) => {
     cancelCrossfade()
     setIndex(i)
+  }
+
+  const setShuffle = (value: boolean) => {
+    shuffleRef.current = value
+    setShuffleState(value)
+  }
+  const cycleRepeatMode = () => {
+    const order: RepeatMode[] = ['off', 'all', 'one']
+    const next = order[(order.indexOf(repeatModeRef.current) + 1) % order.length]
+    repeatModeRef.current = next
+    setRepeatModeState(next)
   }
 
   const seek = (seconds: number) => {
@@ -389,6 +464,9 @@ export function useAudioQueue(tracks: Track[]) {
     duration,
     error,
     volume,
+    shuffle,
+    repeatMode,
+    recentlyPlayed,
     togglePlay,
     next,
     prev,
@@ -396,6 +474,8 @@ export function useAudioQueue(tracks: Track[]) {
     seek,
     setVolume,
     toggleMute,
+    setShuffle,
+    cycleRepeatMode,
     getActiveAnalyser,
   }
 }

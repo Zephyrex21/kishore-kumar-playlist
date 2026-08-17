@@ -1,8 +1,23 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAudioQueue } from '../hooks/useAudioQueue'
+import { useTrackDurations } from '../hooks/useTrackDurations'
 import type { Track } from '../hooks/useSupabaseQueue'
-import { PlayIcon, PauseIcon, PrevIcon, NextIcon, QueueIcon, MusicNoteIcon, VolumeHighIcon, VolumeMuteIcon } from './icons'
+import {
+  PlayIcon,
+  PauseIcon,
+  PrevIcon,
+  NextIcon,
+  QueueIcon,
+  MusicNoteIcon,
+  VolumeHighIcon,
+  VolumeMuteIcon,
+  ShuffleIcon,
+  RepeatIcon,
+  RepeatOneIcon,
+  HistoryIcon,
+} from './icons'
 import SeekBar from './SeekBar'
+import SongInfoModal from './SongInfoModal'
 
 const ACCENT = '#E8A25A'
 const INK = '#fdf6ec'
@@ -126,6 +141,9 @@ export default function PlayerBar({ tracks }: { tracks: Track[] }) {
     duration,
     error,
     volume,
+    shuffle,
+    repeatMode,
+    recentlyPlayed,
     togglePlay,
     next,
     prev,
@@ -133,10 +151,15 @@ export default function PlayerBar({ tracks }: { tracks: Track[] }) {
     seek,
     setVolume,
     toggleMute,
+    setShuffle,
+    cycleRepeatMode,
     getActiveAnalyser,
   } = useAudioQueue(tracks)
+  const trackDurations = useTrackDurations(tracks)
   const [showQueue, setShowQueue] = useState(false)
   const [showVolume, setShowVolume] = useState(false)
+  const [showInfo, setShowInfo] = useState(false)
+  const [queueTab, setQueueTab] = useState<'queue' | 'recent'>('queue')
   const panelRef = useRef<HTMLDivElement>(null)
   const toggleRef = useRef<HTMLButtonElement>(null)
   const volumePanelRef = useRef<HTMLDivElement>(null)
@@ -231,23 +254,97 @@ export default function PlayerBar({ tracks }: { tracks: Track[] }) {
       {showQueue && (
         <div
           ref={panelRef}
-          className="queue-scroll mb-2 rounded-2xl backdrop-blur-2xl border max-h-56 overflow-y-auto shadow-2xl"
+          className="queue-scroll mb-2 rounded-2xl backdrop-blur-2xl border max-h-64 overflow-y-auto shadow-2xl"
           style={{ background: 'rgba(18,8,3,0.92)', borderColor: 'rgba(255,255,255,0.1)' }}
         >
-          {tracks.map((t, i) => (
-            <button
-              key={t.path}
-              onClick={() => playAt(i)}
-              className="w-full text-left px-4 py-2.5 text-sm flex items-center justify-between transition-colors hover:bg-white/5"
-              style={{ color: i === index ? ACCENT : `${INK}cc` }}
-            >
-              <span className="truncate flex items-center gap-2">
-                <span className="text-[10px] tabular-nums opacity-50 w-4">{i + 1}</span>
-                {t.name}
-              </span>
-              {i === index && <EqualizerBars active={!isPaused} />}
-            </button>
-          ))}
+          <div className="flex gap-1 px-3 pt-3 pb-1 sticky top-0 items-center justify-between" style={{ background: 'rgba(18,8,3,0.92)' }}>
+            <div className="flex gap-1">
+              <button
+                onClick={() => setQueueTab('queue')}
+                className="text-[11px] px-3 py-1 rounded-full transition-colors"
+                style={{
+                  color: queueTab === 'queue' ? '#160D08' : `${INK}99`,
+                  background: queueTab === 'queue' ? ACCENT : 'transparent',
+                }}
+              >
+                Queue
+              </button>
+              <button
+                onClick={() => setQueueTab('recent')}
+                className="text-[11px] px-3 py-1 rounded-full transition-colors flex items-center gap-1"
+                style={{
+                  color: queueTab === 'recent' ? '#160D08' : `${INK}99`,
+                  background: queueTab === 'recent' ? ACCENT : 'transparent',
+                }}
+              >
+                <HistoryIcon size={11} />
+                Recent
+              </button>
+            </div>
+            {/* Mobile-only — the main bar hides these below `sm` for space. */}
+            <div className="flex sm:hidden gap-1">
+              <button
+                onClick={() => setShuffle(!shuffle)}
+                aria-label={shuffle ? 'Disable shuffle' : 'Enable shuffle'}
+                aria-pressed={shuffle}
+                className="w-7 h-7 flex items-center justify-center rounded-full"
+                style={{ color: shuffle ? ACCENT : `${INK}88` }}
+              >
+                <ShuffleIcon size={13} />
+              </button>
+              <button
+                onClick={cycleRepeatMode}
+                aria-label={`Repeat: ${repeatMode}`}
+                className="w-7 h-7 flex items-center justify-center rounded-full"
+                style={{ color: repeatMode !== 'off' ? ACCENT : `${INK}88` }}
+              >
+                {repeatMode === 'one' ? <RepeatOneIcon size={13} /> : <RepeatIcon size={13} />}
+              </button>
+            </div>
+          </div>
+
+          {queueTab === 'queue' &&
+            tracks.map((t, i) => (
+              <button
+                key={t.path}
+                onClick={() => playAt(i)}
+                className="w-full text-left px-4 py-2.5 text-sm flex items-center justify-between gap-3 transition-colors hover:bg-white/5"
+                style={{ color: i === index ? ACCENT : `${INK}cc` }}
+              >
+                <span className="truncate flex items-center gap-2 min-w-0">
+                  <span className="text-[10px] tabular-nums opacity-50 w-4 flex-shrink-0">{i + 1}</span>
+                  <span className="truncate">{t.name}</span>
+                </span>
+                <span className="flex items-center gap-2 flex-shrink-0">
+                  {i === index && <EqualizerBars active={!isPaused} />}
+                  <span className="text-[10px] tabular-nums opacity-50">
+                    {trackDurations[t.path] ? formatTime(trackDurations[t.path]) : '--:--'}
+                  </span>
+                </span>
+              </button>
+            ))}
+
+          {queueTab === 'recent' &&
+            (recentlyPlayed.length === 0 ? (
+              <p className="px-4 py-4 text-xs" style={{ color: `${INK}66` }}>
+                Nothing played yet this visit.
+              </p>
+            ) : (
+              recentlyPlayed.map((entry) => {
+                const trackIdx = tracks.findIndex((t) => t.name === entry.name)
+                return (
+                  <button
+                    key={entry.playedAt}
+                    onClick={() => trackIdx >= 0 && playAt(trackIdx)}
+                    disabled={trackIdx < 0}
+                    className="w-full text-left px-4 py-2.5 text-sm truncate transition-colors hover:bg-white/5 disabled:opacity-40"
+                    style={{ color: `${INK}cc` }}
+                  >
+                    {entry.name}
+                  </button>
+                )
+              })
+            ))}
         </div>
       )}
 
@@ -264,8 +361,10 @@ export default function PlayerBar({ tracks }: { tracks: Track[] }) {
           style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent)' }}
         />
 
-        <div
-          className="w-14 h-14 rounded-full flex-shrink-0 flex items-center justify-center relative"
+        <button
+          onClick={() => setShowInfo(true)}
+          aria-label="Song info"
+          className="w-14 h-14 rounded-full flex-shrink-0 flex items-center justify-center relative cursor-pointer"
           style={{
             background: 'radial-gradient(circle at 35% 30%, #4a2712, #1c0d05 70%)',
             border: '1px solid rgba(255,255,255,0.1)',
@@ -287,7 +386,7 @@ export default function PlayerBar({ tracks }: { tracks: Track[] }) {
           )}
           <MusicNoteIcon size={20} color={`${ACCENT}cc`} />
           <div className="absolute w-2 h-2 rounded-full" style={{ background: '#12080399' }} />
-        </div>
+        </button>
 
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-2 mb-1">
@@ -318,7 +417,16 @@ export default function PlayerBar({ tracks }: { tracks: Track[] }) {
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 flex-shrink-0">
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <button
+            onClick={() => setShuffle(!shuffle)}
+            aria-label={shuffle ? 'Disable shuffle' : 'Enable shuffle'}
+            aria-pressed={shuffle}
+            className="hidden sm:flex w-7 h-7 items-center justify-center rounded-full transition-colors hover:bg-white/10"
+            style={{ color: shuffle ? ACCENT : `${INK}88` }}
+          >
+            <ShuffleIcon size={14} />
+          </button>
           <button
             onClick={prev}
             disabled={tracks.length < 2}
@@ -344,6 +452,14 @@ export default function PlayerBar({ tracks }: { tracks: Track[] }) {
             style={{ color: `${INK}cc` }}
           >
             <NextIcon />
+          </button>
+          <button
+            onClick={cycleRepeatMode}
+            aria-label={`Repeat: ${repeatMode}`}
+            className="hidden sm:flex w-7 h-7 items-center justify-center rounded-full transition-colors hover:bg-white/10"
+            style={{ color: repeatMode !== 'off' ? ACCENT : `${INK}88` }}
+          >
+            {repeatMode === 'one' ? <RepeatOneIcon size={14} /> : <RepeatIcon size={14} />}
           </button>
           <button
             ref={volumeToggleRef}
@@ -391,6 +507,8 @@ export default function PlayerBar({ tracks }: { tracks: Track[] }) {
           </button>
         </div>
       </div>
+
+      {showInfo && current && <SongInfoModal trackName={current.name} onClose={() => setShowInfo(false)} />}
 
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }

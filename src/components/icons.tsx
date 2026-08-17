@@ -62,3 +62,39 @@ export const VolumeMuteIcon = ({ size = 16, color = 'currentColor' }: IconProps)
     <path d="M16 9l5 6M21 9l-5 6" />
   </svg>
 )
+
+export const ShuffleIcon = ({ size = 15, color = 'currentColor' }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 6h3.5c1.6 0 3 .9 3.8 2.3l4.4 7.4c.8 1.4 2.2 2.3 3.8 2.3H21M3 18h3.5c1.6 0 3-.9 3.8-2.3l.6-1" />
+    <path d="M17.5 6H21M21 6l-3-3M21 6l-3 3" />
+    <path d="M21 18l-3-3M21 18l-3 3" />
+    <path d="M17.5 18H21" />
+  </svg>
+)
+
+export const RepeatIcon = ({ size = 15, color = 'currentColor' }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M17 2l4 4-4 4" />
+    <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+    <path d="M7 22l-4-4 4-4" />
+    <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+  </svg>
+)
+
+export const RepeatOneIcon = ({ size = 15, color = 'currentColor' }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M17 2l4 4-4 4" />
+    <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+    <path d="M7 22l-4-4 4-4" />
+    <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+    <path d="M11 10.5h1v3" />
+  </svg>
+)
+
+export const HistoryIcon = ({ size = 14, color = 'currentColor' }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 12a9 9 0 1 0 3-6.7" />
+    <path d="M3 4v4h4" />
+    <path d="M12 8v4l3 2" />
+  </svg>
+)
