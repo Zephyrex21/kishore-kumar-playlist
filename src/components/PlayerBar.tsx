@@ -349,7 +349,7 @@ export default function PlayerBar({ tracks }: { tracks: Track[] }) {
       )}
 
       <div
-        className="relative rounded-[28px] backdrop-blur-2xl border px-5 py-4 flex items-center gap-4 shadow-[0_8px_40px_rgba(0,0,0,0.45)]"
+        className="relative rounded-[28px] backdrop-blur-2xl border px-4 py-3.5 sm:px-5 sm:py-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 shadow-[0_8px_40px_rgba(0,0,0,0.45)]"
         style={{
           background: 'linear-gradient(180deg, rgba(28,14,6,0.85), rgba(18,8,3,0.85))',
           borderColor: 'rgba(255,255,255,0.14)',
@@ -361,63 +361,69 @@ export default function PlayerBar({ tracks }: { tracks: Track[] }) {
           style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent)' }}
         />
 
-        <button
-          onClick={() => setShowInfo(true)}
-          aria-label="Song info"
-          className="w-14 h-14 rounded-full flex-shrink-0 flex items-center justify-center relative cursor-pointer"
-          style={{
-            background: 'radial-gradient(circle at 35% 30%, #4a2712, #1c0d05 70%)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            boxShadow: 'inset 0 0 12px rgba(0,0,0,0.5)',
-            animation: isPaused ? 'none' : 'spin 6s linear infinite',
-          }}
-        >
-          {!isPaused && (
-            <>
-              <span
-                className="absolute inset-0 rounded-full pointer-events-none"
-                style={{ border: `1px solid ${ACCENT}66`, animation: 'pulse-ring 2.2s ease-out infinite' }}
-              />
-              <span
-                className="absolute inset-0 rounded-full pointer-events-none"
-                style={{ border: `1px solid ${ACCENT}44`, animation: 'pulse-ring 2.2s ease-out infinite 1.1s' }}
-              />
-            </>
-          )}
-          <MusicNoteIcon size={20} color={`${ACCENT}cc`} />
-          <div className="absolute w-2 h-2 rounded-full" style={{ background: '#12080399' }} />
-        </button>
+        {/* Row 1 (always): disc + title/seekbar. On mobile this is its own
+            row; on sm+ it sits inline with the controls row below. */}
+        <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto sm:flex-1 min-w-0">
+          <button
+            onClick={() => setShowInfo(true)}
+            aria-label="Song info"
+            className="w-12 h-12 sm:w-14 sm:h-14 rounded-full flex-shrink-0 flex items-center justify-center relative cursor-pointer"
+            style={{
+              background: 'radial-gradient(circle at 35% 30%, #4a2712, #1c0d05 70%)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              boxShadow: 'inset 0 0 12px rgba(0,0,0,0.5)',
+              animation: isPaused ? 'none' : 'spin 6s linear infinite',
+            }}
+          >
+            {!isPaused && (
+              <>
+                <span
+                  className="absolute inset-0 rounded-full pointer-events-none"
+                  style={{ border: `1px solid ${ACCENT}66`, animation: 'pulse-ring 2.2s ease-out infinite' }}
+                />
+                <span
+                  className="absolute inset-0 rounded-full pointer-events-none"
+                  style={{ border: `1px solid ${ACCENT}44`, animation: 'pulse-ring 2.2s ease-out infinite 1.1s' }}
+                />
+              </>
+            )}
+            <MusicNoteIcon size={18} color={`${ACCENT}cc`} />
+            <div className="absolute w-2 h-2 rounded-full" style={{ background: '#12080399' }} />
+          </button>
 
-        <div className="min-w-0 flex-1">
-          <div className="flex items-baseline gap-2 mb-1">
-            <p className="text-[10px] font-medium tracking-wider uppercase" style={{ color: `${ACCENT}bb` }}>
-              {isPaused ? 'Paused' : 'Now Playing'}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-baseline gap-2 mb-1">
+              <p className="text-[10px] font-medium tracking-wider uppercase" style={{ color: `${ACCENT}bb` }}>
+                {isPaused ? 'Paused' : 'Now Playing'}
+              </p>
+              <p className="text-[10px] tabular-nums" style={{ color: `${INK}55` }}>
+                {index + 1} / {tracks.length}
+              </p>
+              <EqualizerBars active={!isPaused} getAnalyser={getActiveAnalyser} />
+            </div>
+            <p className="text-[14px] sm:text-[15px] font-medium truncate mb-2" style={{ color: INK }}>
+              {current?.name ?? 'No track'}
             </p>
-            <p className="text-[10px] tabular-nums" style={{ color: `${INK}55` }}>
-              {index + 1} / {tracks.length}
-            </p>
-            <EqualizerBars active={!isPaused} getAnalyser={getActiveAnalyser} />
-          </div>
-          <p className="text-[15px] font-medium truncate mb-2" style={{ color: INK }}>
-            {current?.name ?? 'No track'}
-          </p>
 
-          <div className="flex items-center gap-2.5">
-            <span className="text-[10px] tabular-nums w-8" style={{ color: `${INK}77` }}>
-              {formatTime(position)}
-            </span>
-            <SeekBar
-              pct={progressPct}
-              accent={ACCENT}
-              onChange={(pct) => duration > 0 && seek((pct / 100) * duration)}
-            />
-            <span className="text-[10px] tabular-nums w-8 text-right" style={{ color: `${INK}77` }}>
-              {formatTime(duration)}
-            </span>
+            <div className="flex items-center gap-2.5">
+              <span className="text-[10px] tabular-nums w-8" style={{ color: `${INK}77` }}>
+                {formatTime(position)}
+              </span>
+              <SeekBar
+                pct={progressPct}
+                accent={ACCENT}
+                onChange={(pct) => duration > 0 && seek((pct / 100) * duration)}
+              />
+              <span className="text-[10px] tabular-nums w-8 text-right" style={{ color: `${INK}77` }}>
+                {formatTime(duration)}
+              </span>
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-1 flex-shrink-0">
+        {/* Row 2 on mobile / inline on sm+: transport controls, centered
+            so they don't hug one edge when they're on their own row. */}
+        <div className="flex items-center justify-center sm:justify-end gap-1 flex-shrink-0 w-full sm:w-auto">
           <button
             onClick={() => setShuffle(!shuffle)}
             aria-label={shuffle ? 'Disable shuffle' : 'Enable shuffle'}
