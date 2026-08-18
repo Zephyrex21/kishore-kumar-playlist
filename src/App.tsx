@@ -1,14 +1,33 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSupabaseQueue } from './hooks/useSupabaseQueue'
 import PlayerBar from './components/PlayerBar'
 import BioModal from './components/BioModal'
+import LoadingScreen from './components/LoadingScreen'
 import { GithubIcon, InfoIcon } from './components/icons'
 
 const GITHUB_URL = 'https://github.com/Zephyrex21/kishore-kumar-playlist'
+const SPLASH_MIN_MS = 900 // keeps the splash from just flashing on fast connections
+const SPLASH_FADE_MS = 550 // must be >= LoadingScreen's CSS transition duration
 
 export default function App() {
   const { tracks, isLoading, error } = useSupabaseQueue()
   const [showBio, setShowBio] = useState(false)
+  const [imageReady, setImageReady] = useState(false)
+  const [minTimeElapsed, setMinTimeElapsed] = useState(false)
+  const [showSplash, setShowSplash] = useState(true)
+
+  useEffect(() => {
+    const t = setTimeout(() => setMinTimeElapsed(true), SPLASH_MIN_MS)
+    return () => clearTimeout(t)
+  }, [])
+
+  const splashDone = imageReady && minTimeElapsed
+
+  useEffect(() => {
+    if (!splashDone) return
+    const t = setTimeout(() => setShowSplash(false), SPLASH_FADE_MS)
+    return () => clearTimeout(t)
+  }, [splashDone])
 
   return (
     <main className="relative min-h-screen w-full overflow-hidden">
@@ -22,6 +41,8 @@ export default function App() {
         alt="Kishore Kumar"
         className="absolute inset-0 w-full h-full object-cover fade-in-image"
         style={{ objectPosition: '32% 22%' }}
+        onLoad={() => setImageReady(true)}
+        onError={() => setImageReady(true)} // don't let a broken image lock the splash forever
       />
 
       {/* Darkens the lower band so the floating player bar stays legible
@@ -114,6 +135,8 @@ export default function App() {
       </a>
 
       {showBio && <BioModal onClose={() => setShowBio(false)} />}
+
+      {showSplash && <LoadingScreen fading={splashDone} />}
 
       <PlayerBar tracks={tracks} />
     </main>
