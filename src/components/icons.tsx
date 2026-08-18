@@ -98,3 +98,11 @@ export const HistoryIcon = ({ size = 14, color = 'currentColor' }: IconProps) =>
     <path d="M12 8v4l3 2" />
   </svg>
 )
+
+export const InfoIcon = ({ size = 20, color = 'currentColor' }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 11v5.5" />
+    <circle cx="12" cy="7.8" r="0.9" fill={color} stroke="none" />
+  </svg>
+)

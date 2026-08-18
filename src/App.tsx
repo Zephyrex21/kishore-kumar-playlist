@@ -1,11 +1,14 @@
+import { useState } from 'react'
 import { useSupabaseQueue } from './hooks/useSupabaseQueue'
 import PlayerBar from './components/PlayerBar'
-import { GithubIcon } from './components/icons'
+import BioModal from './components/BioModal'
+import { GithubIcon, InfoIcon } from './components/icons'
 
 const GITHUB_URL = 'https://github.com/Zephyrex21/kishore-kumar-playlist'
 
 export default function App() {
   const { tracks, isLoading, error } = useSupabaseQueue()
+  const [showBio, setShowBio] = useState(false)
 
   return (
     <main className="relative min-h-screen w-full overflow-hidden">
@@ -90,6 +93,15 @@ export default function App() {
         </div>
       )}
 
+      <button
+        onClick={() => setShowBio(true)}
+        aria-label="About Kishore Kumar"
+        className="fixed bottom-6 left-6 z-50 w-11 h-11 flex items-center justify-center rounded-full backdrop-blur-xl border transition-transform hover:scale-110"
+        style={{ background: 'rgba(18,8,3,0.75)', borderColor: 'rgba(255,255,255,0.15)', color: '#fdf6ecdd' }}
+      >
+        <InfoIcon size={20} />
+      </button>
+
       <a
         href={GITHUB_URL}
         target="_blank"
@@ -100,6 +112,8 @@ export default function App() {
       >
         <GithubIcon size={20} />
       </a>
+
+      {showBio && <BioModal onClose={() => setShowBio(false)} />}
 
       <PlayerBar tracks={tracks} />
     </main>
