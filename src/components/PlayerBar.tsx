@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAudioQueue } from '../hooks/useAudioQueue'
-import { useWaveform } from '../hooks/useWaveform'
 import { useTrackDurations } from '../hooks/useTrackDurations'
 import type { Track } from '../hooks/useSupabaseQueue'
 import {
@@ -18,8 +17,7 @@ import {
   HistoryIcon,
   TrendingIcon,
 } from './icons'
-import SeekBar from './SeekBar'
-import WaveformSeekBar from './WaveformSeekBar'
+import SquigglySeekBar from './SquigglySeekBar'
 import SongInfoModal from './SongInfoModal'
 
 const ACCENT = '#E8A25A'
@@ -158,9 +156,7 @@ export default function PlayerBar({ tracks }: { tracks: Track[] }) {
     setShuffle,
     cycleRepeatMode,
     getActiveAnalyser,
-    getAudioContext,
   } = useAudioQueue(tracks)
-  const { peaks: waveformPeaks } = useWaveform(current?.url, getAudioContext)
   const trackDurations = useTrackDurations(tracks)
   const [showQueue, setShowQueue] = useState(false)
   const [showVolume, setShowVolume] = useState(false)
@@ -451,20 +447,12 @@ export default function PlayerBar({ tracks }: { tracks: Track[] }) {
               <span className="text-[10px] tabular-nums w-8" style={{ color: `${INK}77` }}>
                 {formatTime(position)}
               </span>
-              {waveformPeaks ? (
-                <WaveformSeekBar
-                  peaks={waveformPeaks}
-                  pct={progressPct}
-                  accent={ACCENT}
-                  onChange={(pct) => duration > 0 && seek((pct / 100) * duration)}
-                />
-              ) : (
-                <SeekBar
-                  pct={progressPct}
-                  accent={ACCENT}
-                  onChange={(pct) => duration > 0 && seek((pct / 100) * duration)}
-                />
-              )}
+              <SquigglySeekBar
+                pct={progressPct}
+                accent={ACCENT}
+                playing={!isPaused}
+                onChange={(pct) => duration > 0 && seek((pct / 100) * duration)}
+              />
               <span className="text-[10px] tabular-nums w-8 text-right" style={{ color: `${INK}77` }}>
                 {formatTime(duration)}
               </span>
