@@ -1,8 +1,8 @@
 # Kishore Kumar — playlist
 
-Single-page player, styled after the Raju Mistri playlist site. React +
-Vite + Tailwind v4, songs served from a Supabase Storage bucket — no
-Spotify, no third-party player chrome.
+A tribute site: single-page player styled after the Raju Mistri playlist
+site, songs served from a Supabase Storage bucket. React + Vite +
+Tailwind v4. Installable as a PWA.
 
 ## Set up Supabase
 
@@ -14,9 +14,7 @@ Spotify, no third-party player chrome.
 5. Copy `.env.example` to `.env` and paste those two values in.
 
 Track titles are auto-generated from filenames — `roop-tera-mastana.mp3`
-becomes "Roop Tera Mastana" in the queue. Rename files before uploading
-if you want cleaner titles, or tell Claude and we'll add a metadata
-manifest instead of relying on filenames.
+becomes "Roop Tera Mastana" in the queue.
 
 ## Run it
 
@@ -25,18 +23,37 @@ manifest instead of relying on filenames.
 
 ## Structure
 
-- `src/lib/supabase.ts` — Supabase client + bucket name constant
+- `src/lib/supabase.ts` — Supabase client + bucket name constant. Fails
+  safely (doesn't crash the app) if `.env` is missing or invalid.
 - `src/hooks/useSupabaseQueue.ts` — lists the bucket, builds the track queue
-- `src/hooks/useAudioQueue.ts` — real `<audio>` element playback: play,
-  pause, seek, next, prev, auto-advance on track end
-- `src/components/PlayerBar.tsx` — the floating glass player + queue list
-- `src/utils/halftone.ts` — canvas-based dot-screen image converter
-- `src/components/HalftonePortrait.tsx` — wraps the halftone converter,
-  reads from `public/images/hero.jpg`
+- `src/hooks/useAudioQueue.ts` — the real playback engine: dual `<audio>`
+  elements for crossfading, shuffle/repeat, Media Session API (lock-screen
+  controls), Web Audio analyser for the visualizer, volume + recently-played
+  persistence via localStorage
+- `src/hooks/useTrackDurations.ts` — preloads each track's duration
+  (metadata only, not the full file) for the queue list
+- `src/components/PlayerBar.tsx` — the floating glass player, queue/recent
+  panel, volume popover, keyboard shortcuts (Space/arrows/M)
+- `src/components/SongInfoModal.tsx` + `src/data/songMeta.ts` — the
+  film/year/composer/poetic-line popup, keyed by track title. Static file
+  for now — see the comment in `songMeta.ts` for the upgrade path to a
+  Supabase table if you want to edit it without redeploying.
+- `src/components/BioModal.tsx` — Kishore Kumar biography modal
+- `src/components/LoadingScreen.tsx` — splash screen shown until the hero
+  image loads (plus a minimum display time so it doesn't just flash)
+- `public/images/hero.jpg` / `hero.webp` — background photo, served via
+  `<picture>` (WebP first, JPEG fallback)
+- `public/icons/` + `public/favicon.svg` — the disc-motif icon set (app
+  icons, favicon, PWA manifest icons — all generated from one master design
+  so they stay visually consistent)
+- PWA support via `vite-plugin-pwa` (configured in `vite.config.ts`) —
+  generates the manifest and service worker automatically at build time,
+  precaching the app shell. Audio files are deliberately NOT precached
+  (they're large and change independently via Supabase uploads).
 
-## Still to do
+## Deploying
 
-1. Drop a real photo at `public/images/hero.jpg` (see public/images/README.md)
-2. Create the Supabase project + bucket + `.env` (see above)
-3. Deploy to Vercel — remember to add the two `VITE_SUPABASE_*` env vars
-   in the Vercel project settings too, not just locally
+Deploy to Vercel same as always. Remember to add the two
+`VITE_SUPABASE_*` env vars in the Vercel project settings, not just
+locally — the build will succeed either way (it fails safely), but the
+player will show "not configured" until those are set in production too.

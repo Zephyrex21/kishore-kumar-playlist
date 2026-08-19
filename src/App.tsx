@@ -36,14 +36,17 @@ export default function App() {
           toward the subject (roughly where his face sits in the source) so
           on narrower/taller windows the crop eats into empty background
           first, not his face. */}
-      <img
-        src="/images/hero.jpg"
-        alt="Kishore Kumar"
-        className="absolute inset-0 w-full h-full object-cover fade-in-image"
-        style={{ objectPosition: '32% 22%' }}
-        onLoad={() => setImageReady(true)}
-        onError={() => setImageReady(true)} // don't let a broken image lock the splash forever
-      />
+      <picture>
+        <source srcSet="/images/hero.webp" type="image/webp" />
+        <img
+          src="/images/hero.jpg"
+          alt="Kishore Kumar"
+          className="absolute inset-0 w-full h-full object-cover fade-in-image"
+          style={{ objectPosition: '32% 22%' }}
+          onLoad={() => setImageReady(true)}
+          onError={() => setImageReady(true)} // don't let a broken image lock the splash forever
+        />
+      </picture>
 
       {/* Darkens the lower band so the floating player bar stays legible
           regardless of what's behind it. */}
