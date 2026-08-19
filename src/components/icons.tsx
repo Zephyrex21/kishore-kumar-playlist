@@ -99,6 +99,13 @@ export const HistoryIcon = ({ size = 14, color = 'currentColor' }: IconProps) =>
   </svg>
 )
 
+export const TrendingIcon = ({ size = 14, color = 'currentColor' }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 17l6-6 4 4 8-8" />
+    <path d="M15 7h6v6" />
+  </svg>
+)
+
 export const InfoIcon = ({ size = 20, color = 'currentColor' }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
     <circle cx="12" cy="12" r="9" />

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAudioQueue } from '../hooks/useAudioQueue'
+import { useWaveform } from '../hooks/useWaveform'
 import { useTrackDurations } from '../hooks/useTrackDurations'
 import type { Track } from '../hooks/useSupabaseQueue'
 import {
@@ -15,8 +16,10 @@ import {
   RepeatIcon,
   RepeatOneIcon,
   HistoryIcon,
+  TrendingIcon,
 } from './icons'
 import SeekBar from './SeekBar'
+import WaveformSeekBar from './WaveformSeekBar'
 import SongInfoModal from './SongInfoModal'
 
 const ACCENT = '#E8A25A'
@@ -144,6 +147,7 @@ export default function PlayerBar({ tracks }: { tracks: Track[] }) {
     shuffle,
     repeatMode,
     recentlyPlayed,
+    mostPlayed,
     togglePlay,
     next,
     prev,
@@ -154,12 +158,14 @@ export default function PlayerBar({ tracks }: { tracks: Track[] }) {
     setShuffle,
     cycleRepeatMode,
     getActiveAnalyser,
+    getAudioContext,
   } = useAudioQueue(tracks)
+  const { peaks: waveformPeaks } = useWaveform(current?.url, getAudioContext)
   const trackDurations = useTrackDurations(tracks)
   const [showQueue, setShowQueue] = useState(false)
   const [showVolume, setShowVolume] = useState(false)
   const [showInfo, setShowInfo] = useState(false)
-  const [queueTab, setQueueTab] = useState<'queue' | 'recent'>('queue')
+  const [queueTab, setQueueTab] = useState<'queue' | 'recent' | 'most'>('queue')
   const panelRef = useRef<HTMLDivElement>(null)
   const toggleRef = useRef<HTMLButtonElement>(null)
   const volumePanelRef = useRef<HTMLDivElement>(null)
@@ -280,6 +286,17 @@ export default function PlayerBar({ tracks }: { tracks: Track[] }) {
                 <HistoryIcon size={11} />
                 Recent
               </button>
+              <button
+                onClick={() => setQueueTab('most')}
+                className="text-[11px] px-3 py-1 rounded-full transition-colors flex items-center gap-1"
+                style={{
+                  color: queueTab === 'most' ? '#160D08' : `${INK}99`,
+                  background: queueTab === 'most' ? ACCENT : 'transparent',
+                }}
+              >
+                <TrendingIcon size={11} />
+                Most Played
+              </button>
             </div>
             {/* Mobile-only — the main bar hides these below `sm` for space. */}
             <div className="flex sm:hidden gap-1">
@@ -341,6 +358,31 @@ export default function PlayerBar({ tracks }: { tracks: Track[] }) {
                     style={{ color: `${INK}cc` }}
                   >
                     {entry.name}
+                  </button>
+                )
+              })
+            ))}
+
+          {queueTab === 'most' &&
+            (mostPlayed.length === 0 ? (
+              <p className="px-4 py-4 text-xs" style={{ color: `${INK}66` }}>
+                Nothing played yet this visit.
+              </p>
+            ) : (
+              mostPlayed.map((entry) => {
+                const trackIdx = tracks.findIndex((t) => t.name === entry.name)
+                return (
+                  <button
+                    key={entry.name}
+                    onClick={() => trackIdx >= 0 && playAt(trackIdx)}
+                    disabled={trackIdx < 0}
+                    className="w-full text-left px-4 py-2.5 text-sm flex items-center justify-between gap-3 transition-colors hover:bg-white/5 disabled:opacity-40"
+                    style={{ color: `${INK}cc` }}
+                  >
+                    <span className="truncate">{entry.name}</span>
+                    <span className="text-[10px] tabular-nums flex-shrink-0" style={{ color: `${ACCENT}bb` }}>
+                      {entry.count}×
+                    </span>
                   </button>
                 )
               })
@@ -409,11 +451,20 @@ export default function PlayerBar({ tracks }: { tracks: Track[] }) {
               <span className="text-[10px] tabular-nums w-8" style={{ color: `${INK}77` }}>
                 {formatTime(position)}
               </span>
-              <SeekBar
-                pct={progressPct}
-                accent={ACCENT}
-                onChange={(pct) => duration > 0 && seek((pct / 100) * duration)}
-              />
+              {waveformPeaks ? (
+                <WaveformSeekBar
+                  peaks={waveformPeaks}
+                  pct={progressPct}
+                  accent={ACCENT}
+                  onChange={(pct) => duration > 0 && seek((pct / 100) * duration)}
+                />
+              ) : (
+                <SeekBar
+                  pct={progressPct}
+                  accent={ACCENT}
+                  onChange={(pct) => duration > 0 && seek((pct / 100) * duration)}
+                />
+              )}
               <span className="text-[10px] tabular-nums w-8 text-right" style={{ color: `${INK}77` }}>
                 {formatTime(duration)}
               </span>

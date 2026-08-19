@@ -13,9 +13,11 @@ const FADE_STEP_MS = 100
 const VOLUME_STORAGE_KEY = 'kishore-tribute:volume'
 const RECENT_STORAGE_KEY = 'kishore-tribute:recent'
 const RECENT_LIMIT = 20
+const PLAYCOUNT_STORAGE_KEY = 'kishore-tribute:playcounts'
 
 export type RepeatMode = 'off' | 'all' | 'one'
 export type RecentEntry = { name: string; playedAt: number }
+export type MostPlayedEntry = { name: string; count: number }
 
 function loadStoredVolume(): number {
   try {
@@ -45,6 +47,33 @@ function pushRecent(name: string) {
   } catch {
     // Private browsing / storage disabled — recently-played just won't persist.
   }
+}
+
+function loadPlayCounts(): Record<string, number> {
+  try {
+    const raw = localStorage.getItem(PLAYCOUNT_STORAGE_KEY)
+    const parsed = raw ? JSON.parse(raw) : {}
+    return parsed && typeof parsed === 'object' ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+function incrementPlayCount(name: string): MostPlayedEntry[] {
+  const counts = loadPlayCounts()
+  counts[name] = (counts[name] || 0) + 1
+  try {
+    localStorage.setItem(PLAYCOUNT_STORAGE_KEY, JSON.stringify(counts))
+  } catch {
+    // Private browsing / storage disabled — play counts just won't persist.
+  }
+  return sortedPlayCounts(counts)
+}
+
+function sortedPlayCounts(counts: Record<string, number>): MostPlayedEntry[] {
+  return Object.entries(counts)
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
 }
 
 /**
@@ -83,6 +112,10 @@ export function useAudioQueue(tracks: Track[]) {
     return analysersRef.current[activeSlot.current]
   }
 
+  function getAudioContext() {
+    return audioCtxRef.current
+  }
+
   // Given the current index, works out what "advance to the next track"
   // should mean right now — respecting shuffle and repeat. Returns null to
   // mean "don't advance, just stop" (repeat off + already at the last track).
@@ -109,6 +142,7 @@ export function useAudioQueue(tracks: Track[]) {
   const [shuffle, setShuffleState] = useState(false)
   const [repeatMode, setRepeatModeState] = useState<RepeatMode>('off')
   const [recentlyPlayed, setRecentlyPlayed] = useState<RecentEntry[]>(loadRecent)
+  const [mostPlayed, setMostPlayed] = useState<MostPlayedEntry[]>(() => sortedPlayCounts(loadPlayCounts()))
 
   const setIndex = (updater: number | ((i: number) => number)) => {
     setIndexState((prev) => {
@@ -273,6 +307,7 @@ export function useAudioQueue(tracks: Track[]) {
           lastLoggedTrack.current = track.name
           pushRecent(track.name)
           setRecentlyPlayed(loadRecent())
+          setMostPlayed(incrementPlayCount(track.name))
         }
       }
       const onPause = () => {
@@ -467,6 +502,7 @@ export function useAudioQueue(tracks: Track[]) {
     shuffle,
     repeatMode,
     recentlyPlayed,
+    mostPlayed,
     togglePlay,
     next,
     prev,
@@ -477,5 +513,6 @@ export function useAudioQueue(tracks: Track[]) {
     setShuffle,
     cycleRepeatMode,
     getActiveAnalyser,
+    getAudioContext,
   }
 }
