@@ -410,7 +410,12 @@ export default function PlayerBar({ tracks }: { tracks: Track[] }) {
               background: 'radial-gradient(circle at 35% 30%, #4a2712, #1c0d05 70%)',
               border: '1px solid rgba(255,255,255,0.1)',
               boxShadow: 'inset 0 0 12px rgba(0,0,0,0.5)',
-              animation: isPaused ? 'none' : 'spin 6s linear infinite',
+              // Same fix as SquigglySeekBar: keep the animation always
+              // attached and use animationPlayState so the disc freezes
+              // at whatever rotation it was at, instead of snapping back
+              // to 0deg the way animation:'none' would.
+              animation: 'spin 6s linear infinite',
+              animationPlayState: isPaused ? 'paused' : 'running',
             }}
           >
             {!isPaused && (

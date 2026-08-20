@@ -10,6 +10,8 @@ const ERROR_MESSAGES: Record<number, string> = {
 
 const CROSSFADE_SECONDS = 8
 const FADE_STEP_MS = 100
+const PAUSE_FADE_MS = 350
+const PAUSE_FADE_STEP_MS = 30
 const VOLUME_STORAGE_KEY = 'kishore-tribute:volume'
 const RECENT_STORAGE_KEY = 'kishore-tribute:recent'
 const RECENT_LIMIT = 20
@@ -94,6 +96,8 @@ export function useAudioQueue(tracks: Track[]) {
   const indexRef = useRef(0)
   const crossfading = useRef(false)
   const fadeTimer = useRef<number | null>(null)
+  const pauseFadeTimer = useRef<number | null>(null)
+  const isPausing = useRef(false)
   const skipNextLoad = useRef(false)
   const masterVolume = useRef(loadStoredVolume())
   const lastNonZeroVolume = useRef(masterVolume.current || 1)
@@ -176,6 +180,14 @@ export function useAudioQueue(tracks: Track[]) {
     inactive.currentTime = 0
     inactive.volume = masterVolume.current
     activeEl().volume = masterVolume.current
+  }
+
+  function cancelPauseFade() {
+    if (pauseFadeTimer.current) {
+      window.clearInterval(pauseFadeTimer.current)
+      pauseFadeTimer.current = null
+    }
+    isPausing.current = false
   }
 
   function startCrossfade(outgoing: HTMLAudioElement, remainingSeconds: number) {
@@ -286,6 +298,7 @@ export function useAudioQueue(tracks: Track[]) {
         }
         if (
           !crossfading.current &&
+          !isPausing.current &&
           el.duration &&
           Number.isFinite(el.duration) &&
           tracksRef.current.length > 1
@@ -349,6 +362,7 @@ export function useAudioQueue(tracks: Track[]) {
       cleanupB()
       a.pause()
       b.pause()
+      if (pauseFadeTimer.current) window.clearInterval(pauseFadeTimer.current)
       audioCtxRef.current?.close().catch(() => {})
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -382,15 +396,35 @@ export function useAudioQueue(tracks: Track[]) {
   const togglePlay = () => {
     const el = activeEl()
     if (el.paused) {
+      cancelPauseFade()
+      el.volume = masterVolume.current
       resumeAudioCtx()
       el.play().catch((e) => setError(e instanceof Error ? e.message : 'Could not start playback.'))
     } else {
-      el.pause()
+      if (pauseFadeTimer.current) return // already fading out — ignore a duplicate pause click
+      if (crossfading.current) cancelCrossfade() // don't fight the crossfade's own volume ramps
+      isPausing.current = true
+      const startVolume = el.volume
+      const steps = Math.max(1, Math.round(PAUSE_FADE_MS / PAUSE_FADE_STEP_MS))
+      let step = 0
+      pauseFadeTimer.current = window.setInterval(() => {
+        step++
+        const t = step / steps
+        el.volume = Math.max(0, startVolume * (1 - t))
+        if (t >= 1) {
+          if (pauseFadeTimer.current) window.clearInterval(pauseFadeTimer.current)
+          pauseFadeTimer.current = null
+          isPausing.current = false
+          el.pause()
+          el.volume = masterVolume.current // restored so the next play() starts at full volume, not silent
+        }
+      }, PAUSE_FADE_STEP_MS)
     }
   }
 
   const next = () => {
     cancelCrossfade()
+    cancelPauseFade()
     setIndex((i) => {
       if (!tracks.length) return i
       if (shuffleRef.current && tracks.length > 1) {
@@ -403,10 +437,12 @@ export function useAudioQueue(tracks: Track[]) {
   }
   const prev = () => {
     cancelCrossfade()
+    cancelPauseFade()
     setIndex((i) => (tracks.length ? (i - 1 + tracks.length) % tracks.length : i))
   }
   const playAt = (i: number) => {
     cancelCrossfade()
+    cancelPauseFade()
     setIndex(i)
   }
 

@@ -19,7 +19,12 @@ export default function SquigglySeekBar({ pct, onChange, accent, playing }: Prop
   const sharedStyle = {
     backgroundRepeat: 'repeat-x' as const,
     backgroundSize: `${WAVE_TILE_WIDTH}px 100%`,
-    animation: playing ? 'wave-scroll 1.4s linear infinite' : 'none',
+    // Keep the animation always attached — swapping it to 'none' on pause
+    // detaches it entirely, which resets background-position back to 0
+    // instead of freezing wherever it was. animationPlayState freezes
+    // mid-frame, which is what "stop where it left off" actually needs.
+    animation: 'wave-scroll 1.4s linear infinite',
+    animationPlayState: playing ? ('running' as const) : ('paused' as const),
   }
 
   return (
